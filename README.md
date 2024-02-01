@@ -3,7 +3,11 @@
 ## GH Repo Audit
 
 ### Requirements
+Set Environment Variables:
+- ```$env:PAT = "my_personal_access_token"```
+- ```$env:ORGANIZATION = "my_organization_name"```
 
+### Script CSV Export Information
 - [X] Repo Path
 - [X] Repo Creation Date
 - [X] Repo last update date
