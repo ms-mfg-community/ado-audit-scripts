@@ -1,6 +1,6 @@
 # Get the personal access token and organization from environment variables
 $pat = [System.Environment]::GetEnvironmentVariable('PAT')
-$organization = [System.Environment]::GetEnvironmentVariable('ORGANIZATION2')
+$organization = [System.Environment]::GetEnvironmentVariable('ORGANIZATION')
 
 # Define your GitHub Personal Access Token
 #$pat = "your_pat_here"
