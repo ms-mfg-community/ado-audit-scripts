@@ -1,6 +1,6 @@
 # Get the personal access token and organization from environment variables
 $pat = [System.Environment]::GetEnvironmentVariable('PAT')
-$organization = [System.Environment]::GetEnvironmentVariable('ORGANIZATION')
+$organization = [System.Environment]::GetEnvironmentVariable('ORGANIZATION2')
 
 # Define your GitHub Personal Access Token
 #$pat = "your_pat_here"
@@ -11,6 +11,7 @@ $organization = [System.Environment]::GetEnvironmentVariable('ORGANIZATION')
 # Define the API URL
 $apiUrl = "https://api.github.com/orgs/$organization/repos"
 
+
 # Create the Authorization header
 $base64AuthInfo = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes(":$($pat)"))
 
@@ -19,17 +20,30 @@ $headers = @{
     Authorization = "Basic $base64AuthInfo"
 }
 
-do {
+# Initialize a list to store visited URLs
+$visitedUrls = @()
+$repositories = @()
 
-    $response = Invoke-RestMethod -Uri $apiUrl -Headers $headers -Method Get
+do {
+    # If the current URL has already been visited, stop the loop
+    if ($apiUrl -in $visitedUrls) {
+        break
+    }
+
+    #$response = Invoke-RestMethod -Uri $apiUrl -Headers $headers -Method Get -ResponseHeadersVariable ResponseHeaders
+    # Use Invoke-WebRequest to get the response and headers
+    $webRequest = Invoke-WebRequest -Uri $apiUrl -Headers $headers -Method Get
+
+    # Parse the response content from JSON
+    $response = $webRequest.Content | ConvertFrom-Json
 
     $baseApiUrl = "https://api.github.com/repos"
 
     # The list of repositories is in the response
-    $repositories = $response | ForEach-Object {
+    $repositories += $response | ForEach-Object {
         Write-Host "Processing repository $($_.name)..."
         # Define the API URL for the workflows directory of the current repository
-        $apiUrl = "$baseApiUrl/$($_.owner.login)/$($_.name)/contents/.github/workflows"
+        $workflowApiUrl = "$baseApiUrl/$($_.owner.login)/$($_.name)/contents/.github/workflows"
         # Define the API URL for the secrets of the current repository
         $secretsApiUrl = "$baseApiUrl/$($_.owner.login)/$($_.name)/actions/secrets"
         # Define the API URL for the environments of the current repository
@@ -46,31 +60,31 @@ do {
 
         # Make the API request and save the response in a variable
         try {
-            Write-Host "Starting API request for workflows in repository $($_.name)..."
+            #Write-Host "Starting API request for workflows in repository $($_.name)..."
             try {
-                $workflowResponse = Invoke-RestMethod -Uri $apiUrl -Headers $headers -Method Get -ErrorAction Stop
+                $workflowResponse = Invoke-RestMethod -Uri $workflowApiUrl -Headers $headers -Method Get -ErrorAction Stop
             }
             catch {
-                Write-Host "No workflows found in repository $($_.name). Skipping..."
+                #Write-Host "No workflows found in repository $($_.name). Skipping..."
                 $workflowResponse = @()
             }
 
             # Check if the response contains any workflows
             if ($workflowResponse.Count -eq 0) {
-                Write-Host "No workflows found in repository $($_.name). Skipping..."
+                #Write-Host "No workflows found in repository $($_.name). Skipping..."
             }
 
             $hasActions = $true
-            Write-Host "Finished API request for workflows. Repositories checked: $($_.name)"
+            #Write-Host "Finished API request for workflows. Repositories checked: $($_.name)"
         }
         catch {
             # An error occurred, so leave hasActions as False
-            Write-Host "No workflows found in repository $($_.name). Skipping..."
+            #Write-Host "No workflows found in repository $($_.name). Skipping..."
         }
 
         # Make the API request and save the response in a variable
         try {
-            Write-Host "Starting API request for Secrets in repository $($_.name)..."
+            #Write-Host "Starting API request for Secrets in repository $($_.name)..."
             $secretsResponse = Invoke-RestMethod -Uri $secretsApiUrl -Headers $headers -Method Get -ErrorAction Stop
 
             # Check if the response contains any secrets
@@ -78,11 +92,11 @@ do {
         }
         catch {
             # An error occurred, so leave hasSecrets as False
-            Write-Host "An error occurred: $_"
+            #Write-Host "An error occurred: $_"
         }
 
         try {
-            Write-Host "Starting API request for Environments in repository $($_.name)..."
+            #Write-Host "Starting API request for Environments in repository $($_.name)..."
             $environmentsResponse = Invoke-RestMethod -Uri $environmentsApiUrl -Headers $headers -Method Get -ErrorAction Stop
 
             # Check if the response contains any environments
@@ -92,7 +106,7 @@ do {
             }
         }
         catch {
-            Write-Host "An error occurred: $_"
+            #Write-Host "An error occurred: $_"
         }
 
         # Initialize the userPermissions variable to an empty array
@@ -100,7 +114,7 @@ do {
 
         # Make the API request and save the response in a variable
         try {
-            Write-Host "Starting API request for Collaborators in repository $($_.name)..."
+            #Write-Host "Starting API request for Collaborators in repository $($_.name)..."
             $collaboratorsResponse = Invoke-RestMethod -Uri $collaboratorsApiUrl -Headers $headers -Method Get -ErrorAction Stop
 
             # Check if the response contains any collaborators
@@ -115,7 +129,7 @@ do {
             }
         }
         catch {
-            Write-Host "An error occurred: $_"
+            #Write-Host "An error occurred: $_"
         }
 
         # Define the API URL for the teams of the current repository
@@ -127,7 +141,7 @@ do {
 
 
         # Create a string that contains the names of the teams and their permissions
-        Write-Host "Starting API request for Teams..."
+        #Write-Host "Starting API request for Teams..."
         # $teams = ($teamsResponse | ForEach-Object { "$($_.name):$($_.permission)" }) -join ', '
 
         try {
@@ -135,11 +149,10 @@ do {
             $teamsResponse = Invoke-RestMethod -Uri $teamsApiUrl -Headers $headers -Method Get
         
             # Create a string that contains the names of the teams and their permissions
-            Write-Host "Starting API request for Teams..."
             $teams = ($teamsResponse | ForEach-Object { "$($_.name):$($_.permission)" }) -join ', '
         }
         catch {
-            Write-Host "Repository is empty or error: $($_.Exception.Message)"
+            #Write-Host "Repository is empty or error: $($_.Exception.Message)"
             $teams = "No teams or repository is empty"
         }
 
@@ -155,25 +168,39 @@ do {
         @{Name = 'HasSecrets'; Expression = { $hasSecrets } },
         @{Name = 'Environments'; Expression = { $environments } },
         @{Name = 'UserPermissions'; Expression = { $userPermissions } }
+
+        
     }
+
+    # Initialize last page URL variable
+    # $nextUrl = $null
+
+    $visitedUrls += $apiUrl
+    Write-Host "The visitedUrls varlable is : $visitedUrls"
+    Write-Host "The apiURL is currently set to : $apiUrl"
+    Start-Sleep -Seconds 3
+
 
     try {
         # Get the Link header
-        $linkHeader = (Invoke-WebRequest -Uri $apiUrl -Headers $headers -Method Get).Headers.Link
-    
+        $linkHeader = $webRequest.Headers.Link
+        $linkHeader = $linkHeader.Trim().Replace("`r", "").Replace("`n", "")
+
         # Parse the Link header to get the URL for the next page
-        if ($linkHeader -match '<(?<nextUrl>.+?)>; rel="next"') {
-            $apiUrl = $Matches.nextUrl
+        if ($linkHeader -match '<([^>]+)>; rel="next"') {
+            $apiUrl = $Matches[1]
+            Write-Host "linkHeader match found!!! \n Setting the API URL to $apiUrl ..."
         }
-        else {
-            $apiUrl = $null
-        }
+
+        # # Set the next URL as the current URL for the next iteration
+        # $apiUrl = $nextUrl
     }
     catch {
-        Write-Host "Reached end of API Response(s), exiting..."
+        Write-Host "An error occurred: $_"
         $apiUrl = $null
     }
 } while ($apiUrl)
+
 
 # Define the path to the CSV file in the Documents folder
 $csvPath = "$([Environment]::GetFolderPath('MyDocuments'))\github_${organization}_output.csv"
