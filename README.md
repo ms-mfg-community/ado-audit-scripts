@@ -24,3 +24,25 @@ Set Environment Variables:
 - [X] Total Size
 - [X] Secrets - Working at Repo level. As of 2/1/2024, the "List repository environments" endpoint is a preview feature and might not work as expected.
 - [X] Dependabot
+
+## GH User Audit
+### Requirements
+Set Environment Variables:
+- ```$env:PAT = "my_personal_access_token"```
+- ```$env:ORGANIZATION = "my_organization_name"```
+
+### Script CSV Export Information ###
+
+- [ ] Username
+- [ ] Name
+- [ ] E-mail Address
+- [ ] License Type (VS or GH)
+- [ ] Account Creation Date
+- [ ] Last Login Date
+- [ ] Last Activity Date
+- [ ] Org. Memberships
+- [ ] Team Memberships
+- [ ] Copilot License
+- [ ] GHAS License
+
+
