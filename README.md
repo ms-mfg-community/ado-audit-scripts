@@ -29,7 +29,7 @@ Set Environment Variables:
 ### Requirements
 Set Environment Variables:
 - ```$env:PAT = "my_personal_access_token"```
-- ```$env:ORGANIZATION = "my_organization_name"```
+- ```$env:ENTERPRISE = "my_enterprise_name"```
 
 ### Script CSV Export Information ###
 
