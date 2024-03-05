@@ -33,14 +33,14 @@ Set Environment Variables:
 
 ### Script CSV Export Information ###
 
-- [ ] Username
-- [ ] Name
-- [ ] E-mail Address
-- [ ] License Type (VS or GH)
-- [ ] Account Creation Date
+- [X] Username
+- [X] Name
+- [X] E-mail Address
+- [X] License Type (VS or GH)
+- [X] Account Creation Date
 - [ ] Last Login Date
-- [ ] Last Activity Date
-- [ ] Org. Memberships
+- [X] Last Activity Date
+- [X] Org. Memberships
 - [ ] Team Memberships
 - [ ] Copilot License
 - [ ] GHAS License
