@@ -38,7 +38,7 @@ Set Environment Variables:
 - [X] E-mail Address
 - [X] License Type (VS or GH)
 - [X] Account Creation Date
-- [ ] Last Login Date
+- [X] Last Login Date - *__Note: Unavailable via API, use Last Activity Date instead__*
 - [X] Last Activity Date
 - [X] Org. Memberships
 - [ ] Team Memberships
