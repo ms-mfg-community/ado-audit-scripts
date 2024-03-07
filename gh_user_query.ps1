@@ -21,14 +21,69 @@ $headers = @{
     "Accept"        = "application/vnd.github.v3+json"
 }
 
+
+
 try {
     #$response = Invoke-RestMethod -Uri "https://api.github.com/enterprises/$enterprise/users" -Headers $headers
     #$response = Invoke-RestMethod -Uri "https://api.github.com/orgs/$organization/members" -Headers $headers
     $response = Invoke-RestMethod -Uri "https://api.github.com/enterprises/$enterprise/consumed-licenses" -Headers $headers
+
+
     # Expand the 'users' property
     $expandedResponse = $response | Select-Object -ExpandProperty users | ForEach-Object {
         write-host "I've found a username for $($_.github_com_login)!"
+
+        $userName = $_.github_com_login
         # Get the user's events
+        $userOrgQuery = @"
+{
+    user(login: "$($_.github_com_login)") {
+        organizations(first: 100) {
+            nodes {
+                name
+            }
+        }
+    }
+}
+"@
+    
+        $userOrgBody = @{
+            query = $userOrgQuery
+        } | ConvertTo-Json
+        
+        $userOrgGraphQLResponse = Invoke-RestMethod -Uri "https://api.github.com/graphql" -Method Post -Body $userOrgBody -Headers $headers
+        $userOrgNames = $userOrgGraphQLResponse.data.user.organizations.nodes.name
+        $userTeamNames = @()
+        ###############################
+        #### LOOP THROUGH ORG NAMES ###
+        ###############################
+        $userOrgNames | ForEach-Object {
+            $userTeamsQuery = @"
+{
+organization(login: "$_") {
+    teams(first: 100, userLogins: ["$($username)"]) {
+        totalCount
+        edges {
+            node {
+                name
+                description
+            }
+        }
+    }
+}
+}
+"@
+
+            $userTeamsQueryBody = @{
+                query = $userTeamsQuery
+            } | ConvertTo-Json
+            $teamResponse = Invoke-RestMethod -Uri "https://api.github.com/graphql" -Method Post -Body $userTeamsQueryBody -Headers $headers
+            $teamNames = $teamResponse.data.organization.teams.edges.node.name
+            $userTeamNames += $teamNames
+        }
+        
+    
+        
         $events = Invoke-RestMethod -Uri "https://api.github.com/users/$($_.github_com_login)" -Headers $headers
         $lastActivity = Invoke-RestMethod -Uri "https://api.github.com/users/$($_.github_com_login)/events" -Headers $headers
         $lastActivityTime = $lastActivity | Sort-Object created_at -Descending | Select-Object -First 1 -ExpandProperty created_at
@@ -56,6 +111,7 @@ try {
         license_type, 
         github_com_profile, 
         @{Name = 'Account Creation Date'; Expression = { $events | Select-Object -ExpandProperty created_at } },
+        @{Name = 'User Team Membership'; Expression = { $userTeamNames } },
         @{Name = 'Last Activity'; Expression = { $lastActivityTime } },
         @{Name = 'Enterprise Roles'; Expression = { $_.github_com_enterprise_roles } },
         @{Name = 'Member Roles'; Expression = { $_.github_com_member_roles } },
@@ -69,7 +125,7 @@ try {
       
 }
 catch {
-    Write-Host "Error: $_"
+    Write-Host "Error: $($_.Exception.ToString())"
     exit 1
 }
 

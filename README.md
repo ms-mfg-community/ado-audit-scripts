@@ -41,7 +41,7 @@ Set Environment Variables:
 - [X] Last Login Date - *__Note: Unavailable via API, use Last Activity Date instead__*
 - [X] Last Activity Date
 - [X] Org. Memberships
-- [ ] Team Memberships
+- [X] Team Memberships - *__Note: May be affected by org permissions if querying a user account on public GitHub.com__*
 - [ ] Copilot License
 - [ ] GHAS License
 
