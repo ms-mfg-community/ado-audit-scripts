@@ -9,11 +9,16 @@ $enterprise = [System.Environment]::GetEnvironmentVariable('ENTERPRISE')
 #$pat = "your_pat_here"
 
 # Define the organization
-#$organization = "ms-mfg-community"
+#$organization = "your_organization_here"
 
 # Replace these with your own values
 # $enterprise = "your_enterprise"
 # $token = "your_token"
+
+if (!(Get-Module -ListAvailable -Name ImportExcel)) {
+    Write-Host "ImportExcel module not found. Installing ImportExcel module..."
+    Install-Module -Name ImportExcel -Scope CurrentUser
+}
 
 # Set the headers for the API request
 $headers = @{
@@ -21,6 +26,36 @@ $headers = @{
     "Accept"        = "application/vnd.github.v3+json"
 }
 
+#Build List of Organizations in the Enterprise
+
+$queryOrgs = @"
+{
+  enterprise(slug: "$enterprise") {
+    organizations(first: 100) {
+      nodes {
+        name
+      }
+    }
+  }
+}
+"@
+
+# Define the body of the POST request
+$bodyOrgs = @{
+    query = $queryOrgs
+} | ConvertTo-Json
+
+# Define the headers for the request
+$headers = @{
+    "Authorization" = "Bearer $pat"
+    "Content-Type"  = "application/json"
+}
+
+# Send the request
+$orgResponse = Invoke-RestMethod -Uri "https://api.github.com/graphql" -Method Post -Body $bodyOrgs -Headers $headers
+
+# Output the organization names
+$orgList = $orgResponse.data.enterprise.organizations.nodes.name
 
 
 try {
@@ -132,24 +167,30 @@ catch {
 
 # Get the path to the user's My Documents folder
 $myDocuments = [Environment]::GetFolderPath("MyDocuments")
+$copilotUsageStats = @()
+$orgList | ForEach-Object { 
+    Write-Output "checking the organization named $($_) for copilot usage..."
+    $copilotUsage = Invoke-RestMethod -Uri "https://api.github.com/orgs/$($_)/copilot/billing/seats" -Headers $headers
+    $copilotUsageStats += $copilotUsage | Select-Object -ExpandProperty seats
+}
 
-# Define the path to the CSV file
+# Define the path to the xlsx file
 
-$csvFile = "$myDocuments\github_users_${enterprise}_output.csv"
+$xlsxFile = "$myDocuments\github_users_${enterprise}_output.xlsx"
 
 
-# Check if the CSV file already exists
-if (Test-Path $csvFile) {
+# Check if the xlsx file already exists
+if (Test-Path $xlsxFile) {
     # Get the current date and time
     $timestamp = Get-Date -Format "yyyyMMddHHmmss"
 
-    # Define the path to the old CSV file
-    $oldCsvFile = "$myDocuments\github_users_${organization}_output_old_$timestamp.csv"
+    # Define the path to the old xlsx file
+    $oldxlsxFile = "$myDocuments\github_users_${organization}_output_old_$timestamp.xlsx"
 
-    # Rename the CSV file
-    Rename-Item -Path $csvFile -NewName $oldCsvFile
+    # Rename the xlsx file
+    Rename-Item -Path $xlsxFile -NewName $oldxlsxFile
 }
 
-# Create the CSV file
-#$response | Export-Csv -Path $csvFile -NoTypeInformation
-$expandedResponse | Export-Csv -Path "$myDocuments\github_${enterprise}_output.csv" -NoTypeInformation
+# Create the xlsx file
+$expandedResponse | Export-Excel -Path $xlsxFile -WorksheetName 'User Info'
+$copilotUsageStats | Export-Excel -Path $xlsxFile -WorksheetName 'Copilot Usage' -Append
