@@ -34,6 +34,8 @@ $queryOrgs = @"
     organizations(first: 100) {
       nodes {
         name
+        id
+        url
       }
     }
   }
@@ -55,7 +57,8 @@ $headers = @{
 $orgResponse = Invoke-RestMethod -Uri "https://api.github.com/graphql" -Method Post -Body $bodyOrgs -Headers $headers
 
 # Output the organization names
-$orgList = $orgResponse.data.enterprise.organizations.nodes.name
+#$orgList = $orgResponse.data.enterprise.organizations.nodes.name
+$orgList = $orgResponse.data.enterprise.organizations.nodes.url | ForEach-Object { ($_ -split '/')[-1] } 
 
 
 try {
@@ -95,17 +98,17 @@ try {
         $userOrgNames | ForEach-Object {
             $userTeamsQuery = @"
 {
-organization(login: "$_") {
-    teams(first: 100, userLogins: ["$($username)"]) {
-        totalCount
-        edges {
-            node {
-                name
-                description
+    organization(login: "$_") {
+        teams(first: 100, userLogins: ["$($username)"]) {
+            totalCount
+            edges {
+                node {
+                    name
+                    description
             }
         }
     }
-}
+  }
 }
 "@
 
@@ -146,10 +149,10 @@ organization(login: "$_") {
         license_type, 
         github_com_profile, 
         @{Name = 'Account Creation Date'; Expression = { $events | Select-Object -ExpandProperty created_at } },
-        @{Name = 'User Team Membership'; Expression = { $userTeamNames } },
+        @{Name = 'User Team Membership'; Expression = { ($userTeamNames | Where-Object { $_ }) -join ", " } },
         @{Name = 'Last Activity'; Expression = { $lastActivityTime } },
-        @{Name = 'Enterprise Roles'; Expression = { $_.github_com_enterprise_roles } },
-        @{Name = 'Member Roles'; Expression = { $_.github_com_member_roles } },
+        @{Name = 'Enterprise Roles'; Expression = { $_.github_com_enterprise_roles -join ", " } },
+        @{Name = 'Member Roles'; Expression = { $_.github_com_member_roles -join ", " } },
         @{Name = 'Verified Domain E-Mails'; Expression = { $_.github_com_verified_domain_emails } },
         github_com_saml_name_id,
         @{Name = 'Pending Invites'; Expression = { $_.github_com_orgs_with_pending_invites } },
@@ -170,9 +173,44 @@ $myDocuments = [Environment]::GetFolderPath("MyDocuments")
 $copilotUsageStats = @()
 $orgList | ForEach-Object { 
     Write-Output "checking the organization named $($_) for copilot usage..."
-    $copilotUsage = Invoke-RestMethod -Uri "https://api.github.com/orgs/$($_)/copilot/billing/seats" -Headers $headers
-    $copilotUsageStats += $copilotUsage | Select-Object -ExpandProperty seats
+    $current_org = $_
+    $current_org = $current_org -replace ' ', '-'
+    Write-Output "The current organization has been re-written to $current_org..."
+    try {
+        $copilotUsage = Invoke-RestMethod -Uri "https://api.github.com/orgs/$($current_org)/copilot/billing/seats" -Headers $headers
+        $copilotUsage.seats | ForEach-Object { 
+            $copilotUsageStats += $_ | Select-Object @{Name = 'Organization'; Expression = { $current_org } },
+            @{Name = 'Created At'; Expression = { $_.created_at } },
+                @{Name = 'License Assignee'; Expression = { $_.assignee.login } },
+                @{Name = 'User Type'; Expression = { $_.assignee.type } },
+                @{Name = 'Admin User'; Expression = { $_.assignee.site_admin } },
+                @{Name = 'Updated At'; Expression = { $_.updated_at } },
+                @{Name = 'Last Activity At'; Expression = { $_.last_activity_at } },
+                @{Name = 'Last Activity Editor'; Expression = { $_.last_activity_editor } }
+        }
+    } catch {
+        Write-Output "An error occurred while checking the organization $($current_org): $($_.Exception.Message)"
+        Write-Output "Error Details: $($_.Exception)"
+    }
 }
+# $orgList | ForEach-Object { 
+#     Write-Output "checking the organization named $($_) for copilot usage..."
+#     $current_org = $_
+#     $current_org = $current_org -replace ' ', '-'
+#     Write-Output "The current organization has been re-written to $current_org..."
+#     $copilotUsage = Invoke-RestMethod -Uri "https://api.github.com/orgs/$($current_org)/copilot/billing/seats" -Headers $headers
+#     $copilotUsage.seats | ForEach-Object { 
+#         $copilotUsageStats += $_ | Select-Object @{Name = 'Organization'; Expression = { $current_org } },
+#         @{Name = 'Created At'; Expression = { $_.created_at } },
+#             @{Name = 'License Assignee'; Expression = { $_.assignee.login } },
+#             @{Name = 'User Type'; Expression = { $_.assignee.type } },
+#             @{Name = 'Admin User'; Expression = { $_.assignee.site_admin } },
+#             @{Name = 'Updated At'; Expression = { $_.updated_at } },
+#             @{Name = 'Last Activity At'; Expression = { $_.last_activity_at } },
+#             @{Name = 'Last Activity Editor'; Expression = { $_.last_activity_editor } }
+#     }
+# }
+
 
 # Define the path to the xlsx file
 
