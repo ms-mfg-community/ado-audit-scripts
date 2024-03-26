@@ -62,13 +62,29 @@ $orgList = $orgResponse.data.enterprise.organizations.nodes.url | ForEach-Object
 
 
 try {
+    $allResponses = @()
+
+    # Initialize Page Number
+    $page = 1
     #$response = Invoke-RestMethod -Uri "https://api.github.com/enterprises/$enterprise/users" -Headers $headers
     #$response = Invoke-RestMethod -Uri "https://api.github.com/orgs/$organization/members" -Headers $headers
-    $response = Invoke-RestMethod -Uri "https://api.github.com/enterprises/$enterprise/consumed-licenses" -Headers $headers
+    #$response = Invoke-RestMethod -Uri "https://api.github.com/enterprises/$enterprise/consumed-licenses" -Headers $headers
 
+    do {
+        # Send the request with the current page number and a page size of 100
+        $response = Invoke-RestMethod -Uri "https://api.github.com/enterprises/$enterprise/consumed-licenses?page=$page&per_page=100" -Headers $headers
+    
+        # Add the response to the array
+        $allResponses += $response
+    
+        # Increment the page number
+        $page++
+    } while ($response.Count -eq 100)  # Continue as long as the response contains 100 items
+    
+    # Now $allResponses contains the results from all pages
 
     # Expand the 'users' property
-    $expandedResponse = $response | Select-Object -ExpandProperty users | ForEach-Object {
+    $expandedResponse = $allResponses | Select-Object -ExpandProperty users | ForEach-Object {
         write-host "I've found a username for $($_.github_com_login)!"
 
         $userName = $_.github_com_login
@@ -127,14 +143,14 @@ try {
         $lastActivityTime = $lastActivity | Sort-Object created_at -Descending | Select-Object -First 1 -ExpandProperty created_at
 
         # Remove newline characters from the properties
-        $_.github_com_login = $_.github_com_login -replace "`n", ""
+        $_.github_com_login = $_.github_com_login -replace "_rok", "" -replace "-rok", ""
         $_.github_com_name = $_.github_com_name -replace "`n", ""
         $_.visual_studio_subscription_user = $_.visual_studio_subscription_user -replace "`n", ""
         $_.license_type = $_.license_type -replace "`n", ""
         $_.github_com_profile = $_.github_com_profile -replace "`n", ""
         $_.github_com_enterprise_roles = $_.github_com_enterprise_roles -replace "`n", ""
         $_.github_com_member_roles = $_.github_com_member_roles -replace "`n", ""
-        $_.github_com_verified_domain_emails = $_.github_com_verified_domain_emails -replace "`n", ""
+        $_.github_com_verified_domain_emails = $_.github_com_verified_domain_emails -replace "`n", "" -replace "\+rok", ""
         $_.github_com_saml_name_id = $_.github_com_saml_name_id -replace "`n", ""
         $_.github_com_orgs_with_pending_invites = $_.github_com_orgs_with_pending_invites -replace "`n", ""
         $_.github_com_two_factor_auth = $_.github_com_two_factor_auth -replace "`n", ""
