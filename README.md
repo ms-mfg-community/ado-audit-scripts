@@ -31,6 +31,20 @@ Set Environment Variables:
 - ```$env:PAT = "my_personal_access_token"```
 - ```$env:ENTERPRISE = "my_enterprise_name"```
 
+A GitHub Personal Access Token with the following permissions:
+  ```
+  repo:
+   repo:status
+   repo_deployment
+   public_repo
+   repo_invite
+   security_events
+read:org
+read:enterprise
+copilot:
+	manage_billing:copilot
+ ```
+
 ### Script CSV Export Information ###
 
 - [X] Username
