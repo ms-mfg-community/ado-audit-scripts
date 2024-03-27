@@ -143,7 +143,7 @@ try {
         $lastActivityTime = $lastActivity | Sort-Object created_at -Descending | Select-Object -First 1 -ExpandProperty created_at
 
         # Remove newline characters from the properties
-        $_.github_com_login = $_.github_com_login -replace "_rok", "" -replace "-rok", ""
+        $_.github_com_login = $_.github_com_login -replace "\_rok", "" -replace "\-rok", ""
         $_.github_com_name = $_.github_com_name -replace "`n", ""
         $_.visual_studio_subscription_user = $_.visual_studio_subscription_user -replace "`n", ""
         $_.license_type = $_.license_type -replace "`n", ""
